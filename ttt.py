@@ -37,7 +37,7 @@ class Board():
     def check_for_win(self):
         rows = self.game_board.split("\n")
         for row in rows:
-            if row == "XXX":
+            if row == "XXX" or row == "OOO":
                 return True
         return False
     
@@ -87,8 +87,6 @@ class GameController():
             self.current_player = Player(token="X")
 
     def start_game(self):
-        _logger.warning(self.turns)
-        _logger.warning(self.max_turns)
         self.render_text(self.welcome_text)
         self.game_loop(
             in_progress=self.in_progress)
@@ -104,15 +102,11 @@ class GameController():
 
             if self.brd.is_valid_move(cell, self.current_player.token):
                 self.brd.update(cell,self.current_player.token)
-                self.current_player = self.current_player.switch_player(self.current_player.token)
             else:
                 self.render_text(f"{self.current_player.token} that was an invalid move, please try again.")
             
             if self.max_turns:
                 self.turns += 1
-                
-            #     if self.turns > self.max_turns:
-            #         break
 
             if self.brd.check_for_win():
                 self.brd.render()
@@ -121,6 +115,8 @@ class GameController():
             elif self.brd.check_for_draw(self.turns, self.max_turns):
                 self.render_text("The game ends in a draw")
                 sys.exit()
+
+            self.current_player = self.current_player.switch_player(self.current_player.token)
     
     def render_text(self, text):
         print(text)

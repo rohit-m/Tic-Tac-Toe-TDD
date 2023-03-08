@@ -50,6 +50,7 @@ class ttttests(unittest.TestCase):
             call("XX3\n456\n789"), 
             call("XXX\n456\n789"), 
             call(f"{game.current_player.token} wins!")]
+            assert game.current_player.token == "X"
             assert se.exception.code == 1
 
     @patch("ttt.GameController.render_text")
