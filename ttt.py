@@ -4,6 +4,7 @@ from typing import Optional
 
 _logger = logging.getLogger(__package__)
 
+
 class Player():
     token: str
 
@@ -30,16 +31,6 @@ class Board():
 
     def render(self):
         print(self.game_board)
-
-    def check_for_draw(self, turns, max_turns):
-        return True if turns == max_turns else False
-
-    def check_for_win(self):
-        rows = self.game_board.split("\n")
-        for row in rows:
-            if row == "XXX" or row == "OOO":
-                return True
-        return False
     
     def is_valid_move(self, cell, token):
         tmp = self.game_board.replace(cell, token)
@@ -47,82 +38,122 @@ class Board():
             return False
         return True
 
+class GameResult():
+    board: Board
+
+    def __init__(self, board):
+        self.board = board
+        self.result = ""
+        self.check_results()
+
+    def check_for_draw(self):
+        if any(char.isdigit() for char in self.board.game_board):
+            return False
+        return True
+
+    def check_for_win(self):
+        rows = self.board.game_board.split("\n")
+        for row in rows:
+            if row == "XXX" or row == "OOO":
+                return True
+        return False
+
+    def check_results(self):
+        if self.check_for_win():
+            self.result = "win"
+            return self.result
+        elif self.check_for_draw():
+            self.result = "draw"
+            return self.result
+        else:
+            self.result = "continue"
+            return self.result
+
 
 class GameController():
     brd: Board
     current_player: Player
     
-    in_progress: bool
     turns: int
     max_turns: int
 
     welcome_text: str
     take_turns_text: str
+    game_draw_text: str
+    game_end_text: str
 
     def __init__(self, 
-                 in_progress=True, 
+                 brd=None,
+                 current_player=None,
                  turns=1, 
                  max_turns=10, 
                  welcome_text="Welcome to tictactoe", 
                  take_turns_text="Take turn",
-                 brd=None,
-                 current_player=None):
+                 game_draw_text="The game ends in a draw",
+                 game_end_text="Thanks for playing!",
+                 ):
 
-        self.in_progress = in_progress
+        
         self.turns = turns
         self.max_turns = max_turns
 
         self.welcome_text = welcome_text
         self.take_turns_text = take_turns_text
+        self.game_draw_text = game_draw_text
+        self.game_end_text = game_end_text
 
-        # self.brd = brd if brd else Board()
-        if brd:
-            self.brd = brd
-        else:
-            self.brd = Board()
+        self.game_result = None
 
-        if current_player:
-            self.current_player = current_player
-        else:
-            self.current_player = Player(token="X")
+        self.brd = brd if brd else Board()
+
+        self.current_player = current_player if current_player else Player(token="X")
 
     def start_game(self):
         self.render_text(self.welcome_text)
-        self.game_loop(
-            in_progress=self.in_progress)
+        self.game_result = self.game_loop()
+
+        if self.game_result == "draw":
+            self.render_text(f"{self.game_draw_text}")
+            self.end_game_message()
+        elif self.game_result == "win":
+            self.render_text(f"{self.current_player.token} wins!")
+            self.end_game_message()
     
-    def game_loop(self, in_progress):
-        while in_progress:
+    def game_loop(self):
+        self.brd.render()
+
+        cell = self.get_input(self.take_turns_text)
+
+        if cell == "quit":
+            return None
+
+        valid_move = self.brd.is_valid_move(cell, self.current_player.token)
+
+        if valid_move:
+            self.brd.update(cell,self.current_player.token)
+        else:
+            self.render_text(f"{self.current_player.token} that was an invalid move, please try again.")
+        
+        if self.max_turns:
+            self.turns += 1
+
+        if GameResult(board=self.brd).result == "continue":
+            if valid_move:
+                self.current_player = self.current_player.switch_player(self.current_player.token)
+            self.game_loop()
+        else:
             self.brd.render()
 
-            cell = self.get_input(self.take_turns_text)
-
-            if cell == "quit":
-                sys.exit()
-
-            if self.brd.is_valid_move(cell, self.current_player.token):
-                self.brd.update(cell,self.current_player.token)
-            else:
-                self.render_text(f"{self.current_player.token} that was an invalid move, please try again.")
-            
-            if self.max_turns:
-                self.turns += 1
-
-            if self.brd.check_for_win():
-                self.brd.render()
-                self.render_text(f"{self.current_player.token} wins!")
-                sys.exit()
-            elif self.brd.check_for_draw(self.turns, self.max_turns):
-                self.render_text("The game ends in a draw")
-                sys.exit()
-
-            self.current_player = self.current_player.switch_player(self.current_player.token)
+        return GameResult(board=self.brd).result
     
     def render_text(self, text):
         print(text)
 
     def get_input(self, text):
         return input(text)
+    
+    def end_game_message(self):
+        self.render_text(f"{self.game_end_text}")
             
 def main(max_turns=10, board=None, current_player=None, turns=1):
     x = GameController(
